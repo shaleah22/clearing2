@@ -99,6 +99,23 @@ button,input{font-family:Tahoma,Verdana,Geneva,sans-serif;}
 .eq .dofloat .box,.eq .dofl .box{width:3.4em;height:1.25em;font-size:.8em;}
 .eq.dopad{padding-bottom:2.4em;}
 .eq .dofl{display:inline-flex;flex-direction:column;align-items:center;gap:2px;}
+.sgnw{position:relative;display:inline-flex;vertical-align:middle;line-height:1;}
+.sgnw > .box{margin:0;}
+.sgnw .sgnlbl{position:absolute;bottom:calc(100% - 2px);left:50%;transform:translateX(-50%);min-width:100%;box-sizing:border-box;padding:.12em .5em .08em;font-size:.26em;line-height:1.25;font-weight:700;text-align:center;color:var(--white);background:var(--rose);border-radius:6px 6px 0 0;white-space:nowrap;pointer-events:none;}
+.sgnw .box{border-color:var(--rose-b);border-top-left-radius:0;border-top-right-radius:0;}
+.sgnw:has(.hlb1) .sgnlbl{background:#ca8a04;}
+.sgnw:has(.hlb2) .sgnlbl{background:#16a34a;}
+.sgnw:has(.hlb3) .sgnlbl{background:#db2777;}
+.sgnw:has(.hlb4) .sgnlbl{background:#7c3aed;}
+.sgnw:has(.hlb5) .sgnlbl{background:#ea580c;}
+.sgnw:has(.hlb6) .sgnlbl{background:#0891b2;}
+.sgnw.form .sgnlbl{background:var(--blue);}
+.sgnw.form .box{border-color:var(--blue-b);}
+.sgnw:has(.ok) .sgnlbl{background:var(--green);}
+.eq .cell:has(.sgnw.form){padding-top:.45em;}
+.eq.k-pre .cell:has(.sgnw){padding-top:.35em;}
+.grow .sgnw .sgnlbl{font-size:.75rem;padding:1px 8px;}
+.grow:has(.sgnw){padding-top:26px;}
 .eq .dolbl{font-size:.22em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
 .eq.k-pre .lcdw .box.mirror{display:inline-flex;align-items:center;justify-content:center;width:1.9em;height:1.25em;font-size:.8em;vertical-align:middle;box-sizing:border-box;opacity:.85;}
 .cross-btn{margin-right:8px;}
@@ -360,6 +377,12 @@ button,input{font-family:Tahoma,Verdana,Geneva,sans-serif;}
 .follow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;font-size:1.6rem;padding:8px 16px;
   border:2px solid var(--ui-b);background:var(--ui-bg);border-radius:12px;}
 .follow .box{height:2.8rem;width:7rem;font-size:1.5rem;}
+.follow + .follow{margin-top:8px;}
+.follow.said .fusay{flex-basis:100%;text-align:center;}
+.follow .sgnw .sgnlbl{font-size:1rem;padding:2px 10px;}
+.follow.tabbed{flex-direction:column;gap:48px;padding:12px 16px 14px;}
+.follow.tabbed .box{width:8rem;}
+.follow .fuin{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
 .follow .gv{font-weight:700;color:var(--green);}
 @media (max-width:640px){ .guide{font-size:1.05rem;} .grow .box{height:2.1rem;width:3.8rem;font-size:1.1rem;} .follow{font-size:1.1rem;} }
 /* cross simplifying, inside the equation */
@@ -707,17 +730,28 @@ function parseMixed(raw){
   return {sg:m[1]==="-"?-1:1, w:+m[2], n:+m[3], d:+m[4]};
 }
 /* what goes after "x =": the sum as typed, simplified, then as a mixed number */
+/* the form the final answer is written in: a decimal, a fraction, a mixed number, or a whole number */
+function finalForm(r){
+  if(r.d===1) return r.n<0 ? "an integer" : "a whole number";
+  if(asDec(r)) return "a decimal";
+  return Math.abs(r.n)>r.d ? "a mixed number" : "a fraction";
+}
+function formBox(id,wide,r,txt){
+  const box=boxHTML(id,wide);
+  if(P.two===1) return box;                     /* not the final answer yet */
+  return '<span class="sgnw form"><span class="sgnlbl">'+(txt||"write as "+finalForm(r))+'</span>'+box+'</span>';
+}
 function solveChain(){
   const st=S.step, ask=S.phase==="ask", sub=S.sub, here=st===5;
   if(st<5 || (here && (sub==="lcd"||sub==="equiv"||sub==="cross"))) return "";
   const parts=[];
-  if(here && ask && sub==="sum") parts.push(boxHTML("ans",wantWide(tval())));
+  if(here && ask && sub==="sum") parts.push(formBox("ans",wantWide(tval()),tval()));
   else {
     if(S.raw) parts.push(sfrac(S.raw.n,S.raw.d));
-    if(here && ask && sub==="simp") parts.push(boxHTML("simp",true));
+    if(here && ask && sub==="simp") parts.push(formBox("simp",true,tval(),"simplest form"));
     else {
       parts.push(P.dec && P.kind==="add" ? Hp(tval(),rdp()) : H(tval()));
-      if(here && ask && sub==="mixed") parts.push(boxHTML("mix",4.2));
+      if(here && ask && sub==="mixed") parts.push(formBox("mix",4.2,tval(),"write as a mixed number"));
       else if(S.mixDone) parts.push(mixedH(tval()));
     }
   }
@@ -799,7 +833,7 @@ function eqAddMain(f){
   /* -d = -1.9, then d = 1.9 */
   if(p.negVar && (S.step>5 || (S.step===5 && S.sub==="flip"))){
     const val=S.mixDone?mixedH(p.ans):P.dec?Hp(p.ans,rdp()):H(p.ans), writing=S.step===5 && S.phase==="write";
-    const fx = S.step===5 && S.phase==="ask" ? boxHTML("flip",wantWide(p.ans))
+    const fx = S.step===5 && S.phase==="ask" ? formBox("flip",wantWide(p.ans),p.ans)
              : '<span class="'+(writing?"blue fresh":"green")+'">'+val+'</span>';
     h+=row({v:cell(V,writing?"blue fresh":""), k:cell(""), e:cell("=","eqsign"), r:cell(fx)});
   }
@@ -940,12 +974,6 @@ function renderEq(){
     } else panel.innerHTML='<div class="panel doit"><span class="lbl">Do to both sides</span>'+boxHTML("doA",true)+'</div>';
   } else if(f.checkAsk || f.check){
     panel.innerHTML=checkPanel(f);
-  } else if(ORIG && CHK && S.step===6){
-    panel.innerHTML="";                 /* the check happens in the problem itself */
-  } else if(TWO && P.two===2 && S.step===6){
-    panel.innerHTML=twoCheck();
-  } else if(!TWO && CHK && S.step===6){
-    panel.innerHTML=linesCheck(CHK);
   } else panel.innerHTML="";
   /* Check button for the steps with a box to type in */
   ["doA","cxAn","cxBn","cxAd","cxBd","rw1","rw2","opA","opB","ans","chk","lcd","e1","e2","simp","mix","flip"].forEach(function(id){
@@ -1052,7 +1080,7 @@ function renderPrompt(){
     h='<div class="row-between"><div class="prompt"><span class="green"><strong>'+ansLine()+' &#10003;</strong></span></div>'
      +'<button class="next" id="nextBtn" type="button">Next &rarr;<kbd class="nk">N</kbd></button></div>';
   } else if(S.phase==="write"){
-    const nextLbl = S.step===6 && Q && nextQ(Q) && !(followOf() && !S.fuDone) ? "Question "+lab(nextQ(Q))+" &rarr;" : "Next &rarr;";
+    const nextLbl = (S.step===6 || finalWrite()) && Q && nextQ(Q) && !(followOf() && !S.fuDone) ? "Question "+lab(nextQ(Q))+" &rarr;" : "Next &rarr;";
     h='<div class="row-between"><div class="prompt"><span>'+writeLine()+'</span></div>'
      +'<button class="next" id="wrote" type="button">'+nextLbl+'<kbd class="nk">N</kbd></button></div>';
   } else {
@@ -1090,7 +1118,7 @@ function renderPrompt(){
     else if(S.step===3) h+='<div class="hint1">'+moveHint()+'</div>';
     else if(S.step===2 && S.tip) h+='<div class="hint1 tip">'+S.tip+'</div>';
     else if(TYPEMOVE && S.step===1){
-      h+='<div class="hint1">What do you do to <strong>both sides</strong> to get '+P.V+' by itself? <span class="keys">Type it like '+MINUS+'50, +6, ×3 or /90. You can also use a, s, m or d: s50 means subtract 50.</span></div>';
+      h+='<div class="hint1">What do you do to <strong>both sides</strong> to get '+P.V+' by itself? <span class="keys">Type it like '+MINUS+'50, +6 or ×3. To divide, press / and a fraction bar goes under each side. You can also use a, s, m or d: s50 means subtract 50.</span></div>';
       if(S.misses) h+='<div class="missline">&#10007; <span class="mchint">'+(S.doNote||"")+(S.misses>1?" Type "+doWant()+".":"")+'</span></div>';
       pb.innerHTML=h; return;
     }
@@ -1420,7 +1448,6 @@ function render(focus){
   clearCheck();
   renderEq(); alignPrev(); renderPrompt(); renderQ(); fit(); placeDo(); requestAnimationFrame(placeDo); requestAnimationFrame(placeBox);
   requestAnimationFrame(drawSlash);
-  if(S.step===6) requestAnimationFrame(ORIG ? runOrigCheck : runCheck);
   if(focus) setTimeout(function(){
     const cx=S.step===5 && S.sub==="cross" && S.phase==="ask" && crossInfo();
     const el=(cx && $(cx.items[0].id))||$("doA")||$("rw1")||$("rw2")||$("opA")||$("lcd")||$("e1")||$("ans")||$("simp")||$("mix")||$("flip")||$("chk")||$("wrote")||$("nextBtn");
@@ -1464,7 +1491,7 @@ let PROB=0; const FIT={id:-1,k:1};
 function ghostRows(g){
   const show=function(b){ const w=String(b.w);
     if(b.t==="sgn") return (w[0]==="-"?MINUS:"+")+" "+w.replace(/^[-+]/,"");
-    return w.replace(/-/g,MINUS); };
+    return (b.plus && w[0]!=="-" ? "+ " : "")+w.replace(/-/g,MINUS); };
   const fillW=function(t,st){ return hkMarkup(String(t||"").replace(/\{(\w+)\}/g,function(a,k){ return st.boxes&&st.boxes[k] ? show(st.boxes[k]) : ""; })
     .replace(/«(\d)\|([^»]*)»/g,"$2")); };
   return [g.col].concat(g.stages.filter(function(st){ return !st.panel; })).map(function(st){
@@ -1517,7 +1544,9 @@ function parseTerm(raw){
 }
 /* a typed fraction shown stacked */
 function fracTxt(t){ return String(t).replace(/(\d+)\/(\d+)/g,function(a,n,d){ return stackH(n,d); }); }
+function hasSign(raw){ return /^\s*[+\-\u2212\u2013\u2014]/.test(String(raw||"")); }
 function boxGood(b,raw){
+  if(b.plus && !hasSign(raw)) return false;
   if(b.t==="term"){ const a=parseTerm(raw), w=parseTerm(b.w); return !!a && a.L===w.L && same(a.v,w.v); }
   if(b.t==="num"||b.t==="sgn"){ const v=parseVal(raw), w=parseVal(String(b.w)); return !!v && !!w && same(v,w); }
   if(b.t==="op") return normOp(raw)===b.w;
@@ -1547,7 +1576,7 @@ const TRI='<svg class="tri" viewBox="0 0 330 128" role="img" aria-label="Two tri
   +'<text x="83" y="58" font-size="13" text-anchor="end">x + 3</text><text x="147" y="58" font-size="13">x + 3</text><text x="115" y="123" font-size="13" text-anchor="middle">x + 3</text>'
   +'<text x="229" y="64" font-size="13" text-anchor="end">x + 3</text><text x="267" y="56" font-size="13">2x '+MINUS+' 3</text><text x="262" y="123" font-size="13" text-anchor="middle">x</text></svg>';
 const M=MINUS, Fr=function(a,b){ return stackH(a,b); };
-const KEYS=" <span class='keys'>The + is there for you. If a term is negative, type the "+MINUS+" in the box.</span>";
+const KEYS=" <span class='keys'>After the first term on a side, type the sign too: + or "+MINUS+".</span>";
 const DEC_MUL="Clear the decimals. Look for the number with the most digits after the decimal point: 1 digit, multiply by 10. 2 digits, multiply by 100. Type the number in front of each side.";
 const FR_MUL="Clear the fractions. Multiply both sides by the LCD of the bottom numbers. Type the LCD in front of each side.";
 const mulEach=function(n,extra){ return "Multiply every term by "+n+"."+(extra?" "+extra:"")+KEYS; };
@@ -1870,8 +1899,9 @@ const GUIDE={
 };
 /* a question (or two) after solving */
 const FOLLOW={
-  "3":{q:"How much does the person who pays more pay? ($)", t:"num", w:"510", tip:"That person pays 1.5 times as much.",
-       hint:"1.5(340) = 510", why:"One friend pays $340 and the other pays $510."},
+  "3":{say:"The friend who pays more pays 1.5x. Multiply 1.5 &times; 340, the value of x.", q:"1.5 &times; 340 =", before:"$", t:"num", w:"510",
+       tip:"1.5 times 340 is 340 plus half of 340.", hint:"1.5 &times; 340 = 340 + 170 = 510",
+       why:"One friend pays $340 and the other pays $510."},
   "4":{q:"How many minutes is that? Round to the nearest minute.", t:"num", w:"55", tip:"1 hour = 60 minutes.",
        hint:Fr("12","13")+" × 60 = "+Fr("720","13")+", about 55.4", why:Fr("12","13")+" of an hour is about 55 minutes."},
   "10":[{q:"How many dimes does he have?", t:"num", w:"15", tip:"He has the same number of each coin.", hint:"Same as the nickels: 15.", why:""},
@@ -1884,7 +1914,7 @@ const FOLLOW={
         {q:"How many dimes are there? (4x)", t:"num", w:"12", tip:"There are 4 times as many dimes as nickels.", hint:"4x = 4(3) = 12", why:"5 quarters, 3 nickels and 12 dimes."}]
 };
 /* the 11/7/25 quiz, in its own order */
-const QUIZ=["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","23","24"];
+const QUIZ=["1","3","4","5","6","7","8","9","10","12","13","14","15","16","17","18","19"];
 const WORKSHEET=QUIZ.map(function(k,i){
   return {l:String(i+1), src:k, g:true, own:false, grp:""};
 });
@@ -1928,7 +1958,19 @@ function goNext(){
   if(S.step===5 && S.sub==="equiv"){ S.sub="sum"; S.phase="ask"; S.misses=0; S.v={}; render(true); return; }
   if(S.step===5 && P.two===1){ keepStage1(); startStage2(); return; }
   if(S.step===5 && P.kind==="add" && P.negVar && S.sub!=="flip"){ S.sub="flip"; S.phase="ask"; S.misses=0; S.v={}; render(true); return; }
+  if(S.step===5){
+    S.step=6; S.phase="write"; S.misses=0; S.busy=false;
+    if(Q && !followOf()) DONE.add(Q);
+    if(followOf() && !S.fuDone){ render(false); startFollow(); return; }
+    if(Q){ if(nextQ(Q)) startQ(nextQ(Q)); else randomStart(); return; }
+    render(true); return;                       /* a problem they typed: show the answer and stop */
+  }
   S.step++; enter(); render(true);
+}
+/* the line being written is the final answer: the next button goes on to the next question */
+function finalWrite(){
+  return S.step===5 && S.phase==="write" && S.sub!=="cross" && S.sub!=="equiv" && P.two!==1
+    && !(P.kind==="add" && P.negVar && S.sub!=="flip");
 }
 function advance(){
   if(HAS_WRITE[S.step]){ S.phase="write"; S.misses=0; S.busy=false; }
@@ -2077,6 +2119,13 @@ function judgeNum(typing, from){
   if(S.step===5 && /^\s*[-−]\s*\d+\s*\/\s*[-−]\s*\d+\s*$/.test(raw)) return say("A negative divided by a negative is positive. Type it without the negative signs.");
   if(S.step===1){
     /* the move, typed in one go: the operation and the number, like −50 or /90 */
+    /* just the divide sign: draw a fraction bar under each side and let them type what they divide by */
+    if(/^\s*[\/÷d]\s*$/i.test(raw)){
+      if(p.undo==="div") return ok(function(){ S.picked=true; S.step=3; S.phase="ask"; render(true); });
+      S.doNote = p.kind==="frac" ? "Dividing by a fraction works, but it's easier to multiply by the reciprocal. Flip the fraction and multiply."
+                                 : doFeedback({op:"div", v:R(1)});
+      return miss();
+    }
     const r=parseDo(raw);
     const good = !!r && ((r.op===p.undo && (p.kind==="add" ? same(absR(r.v),p.move) : same(r.v,p.move)))
                       || (p.kind==="mul" && isNeg1(p.a) && r.op==="mul" && same(r.v,R(-1))));
@@ -2095,9 +2144,17 @@ function judgeNum(typing, from){
     if(v.n%lcdDen(p.C)===0 && v.n%lcdDen(p.move)===0){ S.L=v.n; return ok(function(){ S.sub="equiv"; render(true); }); }
     return fail();
   }
-  if(S.sub==="flip") return same(v,p.ans) ? ok(toWrite) : fail();
+  const formMiss=function(r){
+    if(P.two===1) return false;
+    const f=finalForm(r);
+    if(f==="a decimal" && /\//.test(raw)){ say("Write it as a decimal."); fail(); return true; }
+    if((f==="a fraction"||f==="a mixed number") && /\./.test(raw)){ say("Write it as a fraction, not a decimal."); fail(); return true; }
+    return false;
+  };
+  if(S.sub==="flip"){ if(formMiss(p.ans)) return; return same(v,p.ans) ? ok(toWrite) : fail(); }
   const rr=parseRaw(raw);
   if(S.sub==="sum"){
+    if(formMiss(tval())) return;
     if(!same(v,tval())) return fail();
     const mx=parseMixed(raw);
     S.raw = (!mx && rr && rr.d>1 && gcd(rr.n,rr.d)>1) ? rr : null;
@@ -2206,7 +2263,7 @@ function gFill(i,t,cur,boxColor,newBlue){
   t=t.replace(/\{(\w+)\}/g,function(all,k){
     const b=st.boxes[k], id="g"+i+k, c=(boxColor&&boxColor[k])||b.c;
     if(cur && b.mirror) return '<span id="'+id+'" class="box mirror'+(boxGood(b,GS.v[id])?' ok':'')+'">'+String(GS.v[id]||"").replace(/</g,"&lt;")+'</span>';
-    return cur ? (b.plus?'+ ':'')+'<input id="'+id+'" class="box'+(c?' hlb'+c:'')+(boxGood(b,GS.v[id])?' ok':'')+'" value="'+String(GS.v[id]||"").replace(/"/g,"&quot;")+'" autocomplete="off" spellcheck="false" aria-label="answer">'
+    return cur ? (b.plus?'<span class="sgnw"><span class="sgnlbl">type + or '+MINUS+'</span>':'')+'<input id="'+id+'" class="box'+(c?' hlb'+c:'')+(boxGood(b,GS.v[id])?' ok':'')+'" value="'+String(GS.v[id]||"").replace(/"/g,"&quot;")+'" autocomplete="off" spellcheck="false" aria-label="'+(b.plus?'answer, include the + or minus sign':'answer')+'">'+(b.plus?'</span>':'')
                : (newBlue ? '<span class="blue">'+boxShow(b,gVal(i,id,b))+'</span>' : boxShow(b,gVal(i,id,b)));
   });
   return t.replace(/«(\d)\|([^»]*)»/g, cur ? '<span class="hk hl$1">$2</span>' : '$2');
@@ -2325,7 +2382,7 @@ function renderCol(){
   } else {
     const st=g.stages[GS.stage];
     const sk=!CROSS && st.noCross;
-    pb.innerHTML='<div class="hint1">'+(sk?st.noCross.prompt:st.prompt)+'</div>'+'<div class="missline">'+(GS.missed?'&#10007; <span class="mchint">'+(sk?st.noCross.hint:st.hint)+'</span>':'')+'</div>';
+    pb.innerHTML='<div class="hint1">'+(sk?st.noCross.prompt:st.prompt)+'</div>'+'<div class="missline">'+(GS.missed?'&#10007; <span class="mchint">'+signNote()+(sk?st.noCross.hint:st.hint)+'</span>':'')+'</div>';
   }
 }
 function renderG(){
@@ -2341,7 +2398,8 @@ function renderG(){
       const b=st.boxes[k], id="g"+i+k, cap=b.cap?'<span class="gsub">'+b.cap+'</span>':'';
       const inner = cur ? '<input id="'+id+'" class="box" value="'+String(GS.v[id]||"").replace(/"/g,"&quot;")+'" autocomplete="off" spellcheck="false" aria-label="'+(b.cap||"answer")+'">'
                         : '<span class="gv'+(b.t==="yn"&&normYN(GS.v[id])==="no"?" no":"")+'">'+boxShow(b,GS.v[id])+'</span>';
-      return (cur && b.plus ? '<span class="gq">+</span>' : '')+'<span class="gbx">'+inner+cap+'</span>';
+      const shown = cur && b.plus ? '<span class="sgnw"><span class="sgnlbl">type + or '+MINUS+'</span>'+inner+'</span>' : inner;
+      return '<span class="gbx">'+shown+cap+'</span>';
     });
     h+='<div class="grow'+(cur?" cur":" done")+'">'+row+'</div>';
   });
@@ -2377,9 +2435,11 @@ function renderG(){
     };
   } else {
     const st=g.stages[GS.stage];
-    pb.innerHTML='<div class="hint1">'+st.prompt+'</div>'+'<div class="missline">'+(GS.missed?'&#10007; <span class="mchint">'+st.hint+'</span>':'')+'</div>';
+    pb.innerHTML='<div class="hint1">'+st.prompt+'</div>'+'<div class="missline">'+(GS.missed?'&#10007; <span class="mchint">'+signNote()+st.hint+'</span>':'')+'</div>';
   }
 }
+/* a sign box left without its + or − */
+function signNote(){ return gBoxes(GS.stage).some(function(x){ return x.b.plus && String(GS.v[x.id]||"").trim() && !hasSign(GS.v[x.id]); }) ? 'Type the + or '+MINUS+' sign in front. ' : ''; }
 function focusG(){
   setTimeout(function(){
     const first=(GS.done||GS.copy||GS.writing) ? $("gNext") : $(gBoxes(GS.stage)[0].id);
@@ -2595,10 +2655,6 @@ function renderVS(focus){
     b.oninput=function(){ b.classList.remove("bad"); vsJudgeSol(true); };
   } else if(VS.phase==="done" && VS.special){
     panel.innerHTML='<div class="follow"><span class="gv">'+(VS.kind==="inf" ? "Infinite solutions" : "No solution")+'</span></div>';
-  } else if(VS.phase==="done" && CHK && ORIG){
-    panel.innerHTML=""; requestAnimationFrame(runOrigCheck);
-  } else if(VS.phase==="done" && CHK){
-    panel.innerHTML=linesCheck(CHK);
   } else panel.innerHTML="";
   $("notebar").textContent="";
   renderVSPrompt();
@@ -2828,7 +2884,7 @@ function followOf(){ const l=followList(); return l ? l[Math.min(S.fuI||0, l.len
 function startFollow(){
   const fu=followOf();
   S.sub="follow"; S.phase="ask"; S.misses=0; S.v={};
-  $("panel").innerHTML=(S.fuRows||"")+'<div class="follow"><span>'+fu.q+'</span><input id="fu" class="box" autocomplete="off" spellcheck="false" aria-label="Your answer"></div>';
+  $("panel").innerHTML=(S.fuRows||"")+'<div class="follow'+(fu.tab?' tabbed':'')+(fu.say?' said':'')+'">'+(fu.say?'<div class="fusay">'+fu.say+'</div>':'')+'<span>'+fu.q+'</span><span class="fuin">'+(fu.before||"")+(fu.tab?'<span class="sgnw form"><span class="sgnlbl">'+fu.tab+'</span>':'')+'<input id="fu" class="box" autocomplete="off" spellcheck="false" aria-label="'+(fu.tab||'Your answer')+'">'+(fu.tab?'</span>':'')+(fu.after||"")+'</span></div>';
   renderPrompt(); fit();
   const el=$("fu");
   el.oninput=function(){ el.classList.remove("bad"); if(boxGood({t:fu.t,w:fu.w},el.value)) doneFollow(el.value); };
@@ -2845,7 +2901,7 @@ function doneFollow(raw){
   el.classList.add("ok"); S.busy=true;
   setTimeout(function(){
     S.busy=false; S.misses=0;
-    S.fuRows=(S.fuRows||"")+'<div class="follow"><span>'+fu.q+'</span><span class="gv">'+boxShow({t:fu.t},raw)+'</span></div>';
+    S.fuRows=(S.fuRows||"")+'<div class="follow"><span>'+fu.q+'</span><span class="fuin">'+(fu.before||"")+'<span class="gv">'+boxShow({t:fu.t,lead:fu.lead},raw)+'</span>'+(fu.after||"")+'</span></div>';
     if((S.fuI||0) < followList().length-1){ S.fuI=(S.fuI||0)+1; startFollow(); return; }
     S.fuDone=true; S.phase="write"; DONE.add(Q);
     $("panel").innerHTML=S.fuRows;
